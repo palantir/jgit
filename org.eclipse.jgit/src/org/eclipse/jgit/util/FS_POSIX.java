@@ -42,11 +42,14 @@
  */
 package org.eclipse.jgit.util;
 
-import java.io.BufferedReader;
-import java.io.File;
-import java.io.IOException;
-import java.io.InputStreamReader;
-import java.io.PrintStream;
+import org.eclipse.jgit.api.errors.JGitInternalException;
+import org.eclipse.jgit.errors.CommandFailedException;
+import org.eclipse.jgit.lib.Constants;
+import org.eclipse.jgit.lib.Repository;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
+import java.io.*;
 import java.nio.charset.Charset;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -55,13 +58,6 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Set;
-
-import org.eclipse.jgit.api.errors.JGitInternalException;
-import org.eclipse.jgit.errors.CommandFailedException;
-import org.eclipse.jgit.lib.Constants;
-import org.eclipse.jgit.lib.Repository;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 /**
  * Base FS for POSIX based systems
@@ -111,6 +107,7 @@ public class FS_POSIX extends FS {
 		int u = umask;
 		if (u == -1) {
 			u = readUmask();
+			LOG.info("Loaded mask {}", u);
 			umask = u;
 		}
 		return u;
@@ -128,9 +125,12 @@ public class FS_POSIX extends FS {
 				if (p.waitFor() == 0) {
 					String s = lineRead.readLine();
 					if (s != null && s.matches("0?\\d{3}")) { //$NON-NLS-1$
-						return Integer.parseInt(s, 8);
+						int mask = Integer.parseInt(s, 8);
+						LOG.info("Using a umask = {}", mask);
+						return mask;
 					}
 				}
+				LOG.info("Using a default umask");
 				return DEFAULT_UMASK;
 			}
 		} catch (Exception e) {
