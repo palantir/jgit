@@ -42,6 +42,26 @@
 
 package org.eclipse.jgit.dircache;
 
+import org.eclipse.jgit.api.errors.FilterFailedException;
+import org.eclipse.jgit.attributes.FilterCommand;
+import org.eclipse.jgit.attributes.FilterCommandRegistry;
+import org.eclipse.jgit.errors.*;
+import org.eclipse.jgit.internal.JGitText;
+import org.eclipse.jgit.lib.*;
+import org.eclipse.jgit.lib.CoreConfig.AutoCRLF;
+import org.eclipse.jgit.lib.CoreConfig.EolStreamType;
+import org.eclipse.jgit.lib.CoreConfig.SymLinks;
+import org.eclipse.jgit.treewalk.*;
+import org.eclipse.jgit.treewalk.filter.PathFilter;
+import org.eclipse.jgit.util.FS;
+import org.eclipse.jgit.util.FS.ExecutionResult;
+import org.eclipse.jgit.util.FileUtils;
+import org.eclipse.jgit.util.RawParseUtils;
+import org.eclipse.jgit.util.SystemReader;
+import org.eclipse.jgit.util.io.EolStreamTypeUtil;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import java.io.File;
 import java.io.FileOutputStream;
 import java.io.IOException;
@@ -52,44 +72,6 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-
-import org.eclipse.jgit.api.errors.FilterFailedException;
-import org.eclipse.jgit.attributes.FilterCommand;
-import org.eclipse.jgit.attributes.FilterCommandRegistry;
-import org.eclipse.jgit.errors.CheckoutConflictException;
-import org.eclipse.jgit.errors.CorruptObjectException;
-import org.eclipse.jgit.errors.IncorrectObjectTypeException;
-import org.eclipse.jgit.errors.IndexWriteException;
-import org.eclipse.jgit.errors.MissingObjectException;
-import org.eclipse.jgit.internal.JGitText;
-import org.eclipse.jgit.lib.Constants;
-import org.eclipse.jgit.lib.CoreConfig.AutoCRLF;
-import org.eclipse.jgit.lib.CoreConfig.EolStreamType;
-import org.eclipse.jgit.lib.CoreConfig.SymLinks;
-import org.eclipse.jgit.lib.FileMode;
-import org.eclipse.jgit.lib.NullProgressMonitor;
-import org.eclipse.jgit.lib.ObjectChecker;
-import org.eclipse.jgit.lib.ObjectId;
-import org.eclipse.jgit.lib.ObjectLoader;
-import org.eclipse.jgit.lib.ObjectReader;
-import org.eclipse.jgit.lib.Repository;
-import org.eclipse.jgit.treewalk.AbstractTreeIterator;
-import org.eclipse.jgit.treewalk.CanonicalTreeParser;
-import org.eclipse.jgit.treewalk.EmptyTreeIterator;
-import org.eclipse.jgit.treewalk.FileTreeIterator;
-import org.eclipse.jgit.treewalk.NameConflictTreeWalk;
-import org.eclipse.jgit.treewalk.TreeWalk;
-import org.eclipse.jgit.treewalk.WorkingTreeIterator;
-import org.eclipse.jgit.treewalk.WorkingTreeOptions;
-import org.eclipse.jgit.treewalk.filter.PathFilter;
-import org.eclipse.jgit.util.FS;
-import org.eclipse.jgit.util.FS.ExecutionResult;
-import org.eclipse.jgit.util.FileUtils;
-import org.eclipse.jgit.util.RawParseUtils;
-import org.eclipse.jgit.util.SystemReader;
-import org.eclipse.jgit.util.io.EolStreamTypeUtil;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 /**
  * This class handles checking out one or two trees merging with the index.
@@ -1285,6 +1267,7 @@ public class DirCacheCheckout {
 		File parentDir = f.getParentFile();
 		FileUtils.mkdirs(parentDir, true);
 		FS fs = repo.getFS();
+		LOG.info("Filesystem supports exec: {}", fs.supportsExecute());
 		WorkingTreeOptions opt = repo.getConfig().get(WorkingTreeOptions.KEY);
 		if (entry.getFileMode() == FileMode.SYMLINK
 				&& opt.getSymLinks() == SymLinks.TRUE) {
@@ -1335,12 +1318,17 @@ public class DirCacheCheckout {
 			entry.setLength(tmpFile.length());
 		}
 
-		if (opt.isFileMode() && fs.supportsExecute()) {
-			if (FileMode.EXECUTABLE_FILE.equals(entry.getRawMode())) {
-				if (!fs.canExecute(tmpFile))
+		boolean fileMode = opt.isFileMode();
+		LOG.info("fileMode: {}", fileMode);
+		if (fileMode && fs.supportsExecute()) {
+			int rawMode = entry.getRawMode();
+			boolean b = fs.canExecute(tmpFile);
+			LOG.info("rawmode: {}; fileexec: {}", rawMode, b);
+			if (FileMode.EXECUTABLE_FILE.equals(rawMode)) {
+				if (!b)
 					fs.setExecute(tmpFile, true);
 			} else {
-				if (fs.canExecute(tmpFile))
+				if (b)
 					fs.setExecute(tmpFile, false);
 			}
 		}
