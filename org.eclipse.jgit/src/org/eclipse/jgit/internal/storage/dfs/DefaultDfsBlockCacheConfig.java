@@ -55,7 +55,7 @@ import org.eclipse.jgit.internal.JGitText;
 import org.eclipse.jgit.lib.Config;
 
 /** Configuration parameters for {@link DfsBlockCache}. */
-public class DfsBlockCacheConfig {
+public class DefaultDfsBlockCacheConfig {
 	/** 1024 (number of bytes in one kibibyte/kilobyte) */
 	public static final int KB = 1024;
 
@@ -67,7 +67,7 @@ public class DfsBlockCacheConfig {
 	private double streamRatio;
 
 	/** Create a default configuration. */
-	public DfsBlockCacheConfig() {
+	public DefaultDfsBlockCacheConfig() {
 		setBlockLimit(32 * MB);
 		setBlockSize(64 * KB);
 		setStreamRatio(0.30);
@@ -87,7 +87,7 @@ public class DfsBlockCacheConfig {
 	 *            pack file data.
 	 * @return {@code this}
 	 */
-	public DfsBlockCacheConfig setBlockLimit(final long newLimit) {
+	public DefaultDfsBlockCacheConfig setBlockLimit(final long newLimit) {
 		blockLimit = newLimit;
 		return this;
 	}
@@ -105,7 +105,7 @@ public class DfsBlockCacheConfig {
 	 *            size in bytes of a single window read in from the pack file.
 	 * @return {@code this}
 	 */
-	public DfsBlockCacheConfig setBlockSize(final int newSize) {
+	public DefaultDfsBlockCacheConfig setBlockSize(final int newSize) {
 		blockSize = Math.max(512, newSize);
 		return this;
 	}
@@ -126,7 +126,7 @@ public class DfsBlockCacheConfig {
 	 * @return {@code this}
 	 * @since 4.0
 	 */
-	public DfsBlockCacheConfig setStreamRatio(double ratio) {
+	public DefaultDfsBlockCacheConfig setStreamRatio(double ratio) {
 		streamRatio = Math.max(0, Math.min(ratio, 1.0));
 		return this;
 	}
@@ -141,7 +141,7 @@ public class DfsBlockCacheConfig {
 	 *            configuration to read properties from.
 	 * @return {@code this}
 	 */
-	public DfsBlockCacheConfig fromConfig(final Config rc) {
+	public DefaultDfsBlockCacheConfig fromConfig(final Config rc) {
 		setBlockLimit(rc.getLong(
 				CONFIG_CORE_SECTION,
 				CONFIG_DFS_SECTION,
