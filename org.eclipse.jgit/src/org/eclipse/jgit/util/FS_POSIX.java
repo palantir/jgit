@@ -187,20 +187,25 @@ public class FS_POSIX extends FS {
 	public boolean setExecute(File f, boolean canExecute) {
 		if (!isFile(f))
 			return false;
-		if (!canExecute)
-			return f.setExecutable(false);
 
 		try {
 			Path path = f.toPath();
 			Set<PosixFilePermission> pset = Files.getPosixFilePermissions(path);
 
-			// owner (user) is always allowed to execute.
-			pset.add(PosixFilePermission.OWNER_EXECUTE);
-
-			int mask = umask();
-			apply(pset, mask, PosixFilePermission.GROUP_EXECUTE, 1 << 3);
-			apply(pset, mask, PosixFilePermission.OTHERS_EXECUTE, 1);
-			Files.setPosixFilePermissions(path, pset);
+			if (!canExecute) {
+				// remove all exec perms
+				pset.remove(PosixFilePermission.OWNER_EXECUTE);
+				pset.remove(PosixFilePermission.GROUP_EXECUTE);
+				pset.remove(PosixFilePermission.OTHERS_EXECUTE);
+				Files.setPosixFilePermissions(path, pset);
+			} else {
+				int mask = umask();
+				// owner (user) is always allowed to execute.
+				pset.add(PosixFilePermission.OWNER_EXECUTE);
+				apply(pset, mask, PosixFilePermission.GROUP_EXECUTE, 1 << 3);
+				apply(pset, mask, PosixFilePermission.OTHERS_EXECUTE, 1);
+				Files.setPosixFilePermissions(path, pset);
+			}
 			return true;
 		} catch (IOException e) {
 			// The interface doesn't allow to throw IOException
