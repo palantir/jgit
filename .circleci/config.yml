@@ -1,0 +1,7 @@
+version: 2
+
+jobs:
+  build-maven:
+    steps:
+      - checkout
+      - run: mvn clean install -T 1C
