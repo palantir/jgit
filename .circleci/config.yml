@@ -5,10 +5,16 @@ jobs:
     docker:
       - image: circleci/openjdk:8-jdk-node
     steps:
-      - run: sudo apt-get update
-      - run: sudo apt-get --assume-yes install maven3
+      - run: |
+          curl -k --silent --show-error --location --fail --retry 3 --output /tmp/apache-maven-3.5.4-bin.tar.gz "http://supergsego.com/apache/maven/maven-3/3.5.4/binaries/apache-maven-3.5.4-bin.tar.gz"
+          tar -xz -C /tmp -f /tmp/apache-maven-3.5.4-bin.tar.gz
+          sudo mv /tmp/apache-maven-3.5.4/ /usr/bin/maven
+          rm -rf /tmp/apache-maven-3.5.4/ /tmp/apache-maven-3.5.4-bin.tar.gz
       - checkout
       - run:
           command: |
+            export M2_HOME=/usr/bin/maven
+            export M2="$M2_HOME/bin"
+            export PATH=$M2:$PATH
             mvn clean install
             mvn -f org.eclipse.jgit.packaging/pom.xml clean install
