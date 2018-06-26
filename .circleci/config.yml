@@ -2,7 +2,8 @@ version: 2
 
 jobs:
   build:
-    machine: true
+    docker:
+      - image: palantirtechnologies/circle-jgit
     steps:
       - checkout
       - run:
