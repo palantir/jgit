@@ -1,7 +1,11 @@
 version: 2
 
 jobs:
-  build-maven:
+  build:
+    machine: true
     steps:
       - checkout
-      - run: mvn clean install -T 1C
+      - run:
+          command: |
+            mvn clean install
+            mvn -f org.eclipse.jgit.packaging/pom.xml clean install
