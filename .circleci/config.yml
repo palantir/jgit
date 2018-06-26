@@ -4,6 +4,7 @@ jobs:
   build:
     docker:
       - image: circleci/openjdk:8-jdk-node
+    resource_class: xlarge
     steps:
       - run: |
           curl -k --silent --show-error --location --fail --retry 3 --output /tmp/apache-maven-3.5.4-bin.tar.gz "http://supergsego.com/apache/maven/maven-3/3.5.4/binaries/apache-maven-3.5.4-bin.tar.gz"
