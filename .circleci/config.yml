@@ -11,6 +11,8 @@ jobs:
           sudo mv /tmp/apache-maven-3.5.4/ /usr/bin/maven
           rm -rf /tmp/apache-maven-3.5.4/ /tmp/apache-maven-3.5.4-bin.tar.gz
       - checkout
+      - restore_cache:
+          key: maven-dependency-cache-{{ checksum "pom.xml" }}
       - run:
           command: |
             export M2_HOME=/usr/bin/maven
@@ -18,3 +20,7 @@ jobs:
             export PATH=$M2:$PATH
             mvn clean install
             mvn -f org.eclipse.jgit.packaging/pom.xml clean install
+      - save_cache:
+          key: maven-dependency-cache-{{ checksum "pom.xml" }}
+          paths:
+            - "~/.m2"
