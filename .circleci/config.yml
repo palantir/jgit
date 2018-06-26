@@ -3,8 +3,10 @@ version: 2
 jobs:
   build:
     docker:
-      - image: palantirtechnologies/circle-jgit
+      - image: circleci/openjdk:8-jdk-node
     steps:
+      - run: sudo apt-get update
+      - run: sudo apt-get --assume-yes install maven3
       - checkout
       - run:
           command: |
