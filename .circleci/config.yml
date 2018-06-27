@@ -5,6 +5,8 @@ jobs:
     docker:
       - image: amd64/openjdk:8u171-jdk
     resource_class: xlarge
+    environment: &defaults-environment
+      TERM: dumb
     steps:
       - run: |
           apt-get update
