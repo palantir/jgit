@@ -22,12 +22,9 @@ jobs:
             - maven-dependency-cache-
       - run:
           command: |
-            export JAVA_HOME=/usr/lib/jvm/java-8-openjdk-amd64
             export M2_HOME=/usr/bin/maven
             export M2="$M2_HOME/bin"
             export PATH=$M2:$PATH
-            export COMPILE_JVM_OPTS="-Dfile.encoding=UTF-8"
-            export MAVEN_OPTS=${MAVEN_OPTS:"$COMPILE_JVM_OPTS"}
             mvn clean install
             mvn -f org.eclipse.jgit.packaging/pom.xml clean install
       - save_cache:
