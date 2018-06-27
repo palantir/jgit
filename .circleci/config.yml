@@ -25,3 +25,5 @@ jobs:
           key: maven-dependency-cache-{{ checksum "pom.xml" }}
           paths:
             - "~/.m2"
+      - store_test_results:
+          path: "org.eclipse.jgit.test/target/"
