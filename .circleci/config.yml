@@ -2,15 +2,10 @@ version: 2
 
 jobs:
   build:
-    docker:
-      - image: amd64/openjdk:8u171-jdk
+    machine: true
     resource_class: xlarge
-    environment: &defaults-environment
-      TERM: dumb
     steps:
       - run: |
-          apt-get update
-          apt-get install -y sudo openssh-client ca-certificates tar curl
           curl -k --silent --show-error --location --fail --retry 3 --output /tmp/apache-maven-3.5.4-bin.tar.gz "http://supergsego.com/apache/maven/maven-3/3.5.4/binaries/apache-maven-3.5.4-bin.tar.gz"
           tar -xz -C /tmp -f /tmp/apache-maven-3.5.4-bin.tar.gz
           sudo mv /tmp/apache-maven-3.5.4/ /usr/bin/maven
