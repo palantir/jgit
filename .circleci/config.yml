@@ -3,10 +3,12 @@ version: 2
 jobs:
   build:
     docker:
-        - image: library/java:openjdk-8u111
+        - image: buildpack-deps:xenial
     resource_class: xlarge
     steps:
       - run: |
+          apt-get update
+          apt-get install -y sudo openjdk-8-jdk
           curl -k --silent --show-error --location --fail --retry 3 --output /tmp/apache-maven-3.5.4-bin.tar.gz "http://supergsego.com/apache/maven/maven-3/3.5.4/binaries/apache-maven-3.5.4-bin.tar.gz"
           tar -xz -C /tmp -f /tmp/apache-maven-3.5.4-bin.tar.gz
           sudo mv /tmp/apache-maven-3.5.4/ /usr/bin/maven
@@ -16,9 +18,12 @@ jobs:
           key: maven-dependency-cache-{{ checksum "pom.xml" }}
       - run:
           command: |
+            export JAVA_HOME=/usr/lib/jvm/java-8-openjdk-amd64
             export M2_HOME=/usr/bin/maven
             export M2="$M2_HOME/bin"
             export PATH=$M2:$PATH
+            export LANG=C.UTF-8
+            locale-gen C.UTF-8 || true
             mvn clean install
             mvn -f org.eclipse.jgit.packaging/pom.xml clean install
       - save_cache:
