@@ -3,7 +3,7 @@ version: 2
 jobs:
   build:
     docker:
-      - image: circleci/java:8u121-jdk
+      - image: amd64/openjdk:8u171-jdk
     resource_class: xlarge
     steps:
       - run: |
