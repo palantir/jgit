@@ -3,7 +3,7 @@ version: 2
 jobs:
   build:
     docker:
-        - image: java/openjdk-8u111
+        - image: library/java:openjdk-8u111
     resource_class: xlarge
     steps:
       - run: |
