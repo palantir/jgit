@@ -3,12 +3,10 @@ version: 2
 jobs:
   build:
     docker:
-        - image: buildpack-deps:xenial
+      - image: circleci/java:8u121-jdk
     resource_class: xlarge
     steps:
       - run: |
-          apt-get update
-          apt-get install -y sudo openjdk-8-jdk
           curl -k --silent --show-error --location --fail --retry 3 --output /tmp/apache-maven-3.5.4-bin.tar.gz "http://supergsego.com/apache/maven/maven-3/3.5.4/binaries/apache-maven-3.5.4-bin.tar.gz"
           tar -xz -C /tmp -f /tmp/apache-maven-3.5.4-bin.tar.gz
           sudo mv /tmp/apache-maven-3.5.4/ /usr/bin/maven
@@ -22,8 +20,8 @@ jobs:
             export M2_HOME=/usr/bin/maven
             export M2="$M2_HOME/bin"
             export PATH=$M2:$PATH
-            export LANG=C.UTF-8
-            locale-gen C.UTF-8 || true
+            export COMPILE_JVM_OPTS="-Dfile.encoding=UTF-8"
+            export MAVEN_OPTS=${MAVEN_OPTS:-"$COMPILE_JVM_OPTS"}
             mvn clean install
             mvn -f org.eclipse.jgit.packaging/pom.xml clean install
       - save_cache:
