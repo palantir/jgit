@@ -17,7 +17,9 @@ jobs:
           rm -rf /tmp/apache-maven-3.5.4/ /tmp/apache-maven-3.5.4-bin.tar.gz
       - checkout
       - restore_cache:
-          key: maven-dependency-cache-{{ checksum "pom.xml" }}
+          keys:
+            - maven-dependency-cache-{{ checksum "pom.xml" }}
+            - maven-dependency-cache-
       - run:
           command: |
             export JAVA_HOME=/usr/lib/jvm/java-8-openjdk-amd64
@@ -25,7 +27,7 @@ jobs:
             export M2="$M2_HOME/bin"
             export PATH=$M2:$PATH
             export COMPILE_JVM_OPTS="-Dfile.encoding=UTF-8"
-            export MAVEN_OPTS=${MAVEN_OPTS:-"$COMPILE_JVM_OPTS"}
+            export MAVEN_OPTS=${MAVEN_OPTS:"$COMPILE_JVM_OPTS"}
             mvn clean install
             mvn -f org.eclipse.jgit.packaging/pom.xml clean install
       - save_cache:
