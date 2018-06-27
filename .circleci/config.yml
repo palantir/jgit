@@ -3,7 +3,7 @@ version: 2
 jobs:
   build:
     docker:
-      - image: circleci/openjdk:8-jdk-node
+      - image: circleci/build-image:ubuntu-14.04-XXL-1327-3401d20
     resource_class: xlarge
     steps:
       - run: |
