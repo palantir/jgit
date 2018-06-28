@@ -37,10 +37,7 @@ jobs:
           path: "org.eclipse.jgit.test/target/"
 
   deploy:
-    <<: *deployable-branches-and-tags
     machine: true
-    requires:
-      - build
     steps:
       - restore_cache:
           key: maven-dependency-cache-{{ checksum "pom.xml" }}
@@ -50,3 +47,13 @@ jobs:
       - run: echo "host=api.bintray.com" >> .credentials
       - deploy:
           command: dev/publish.sh
+
+workflows:
+  version: 2
+  build_and_maybe_deploy:
+    jobs:
+      - build
+      - deploy
+          <<: *deployable-branches-and-tags
+          requires:
+            - build
