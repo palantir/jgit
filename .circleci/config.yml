@@ -52,12 +52,21 @@ jobs:
           key: v1-maven-build-with-version-{{ .Branch }}-{{ .Revision }}
       - restore_cache:
           key: maven-dependency-cache-{{ checksum "pom.xml" }}
+      - run: |
+          sudo rm -rf /usr/bin/maven
+          curl -k --silent --show-error --location --fail --retry 3 --output /tmp/apache-maven-3.5.4-bin.tar.gz "http://supergsego.com/apache/maven/maven-3/3.5.4/binaries/apache-maven-3.5.4-bin.tar.gz"
+          tar -xz -C /tmp -f /tmp/apache-maven-3.5.4-bin.tar.gz
+          sudo mv /tmp/apache-maven-3.5.4/ /usr/bin/maven
       - run: echo "user=$BINTRAY_USERNAME" > .credentials
       - run: echo "password=$BINTRAY_PASSWORD" >> .credentials
       - run: echo "realm=Bintray API Realm" >> .credentials
       - run: echo "host=api.bintray.com" >> .credentials
       - deploy:
-          command: dev/publish.sh
+          command: |
+            export M2_HOME=/usr/bin/maven
+            export M2="$M2_HOME/bin"
+            export PATH=$M2:$PATH
+            dev/publish.sh
 
 workflows:
   version: 2
