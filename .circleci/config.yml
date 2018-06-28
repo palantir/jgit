@@ -1,5 +1,11 @@
 version: 2
 
+all-branches-and-tags: &all-branches-and-tags
+  filters:
+    # CircleCI2 will ignore tags without this. https://circleci.com/docs/2.0/workflows/#git-tag-job-execution
+    tags:
+      only: /.*/
+
 deployable-branches-and-tags: &deployable-branches-and-tags
   filters:
     tags:
@@ -52,7 +58,8 @@ workflows:
   version: 2
   build-deploy:
     jobs:
-      - build
+      - build:
+          <<: *all-branches-and-tags
       - deploy:
           requires:
             - build
