@@ -39,12 +39,17 @@ jobs:
           key: maven-dependency-cache-{{ checksum "pom.xml" }}
           paths:
             - "~/.m2"
+      - save_cache:
+          key: v1-maven-build-with-version-{{ .Branch }}-{{ .Revision }}
+          paths: .
       - store_test_results:
           path: "org.eclipse.jgit.test/target/"
 
   deploy:
     machine: true
     steps:
+      - restore_cache:
+          key: v1-maven-build-with-version-{{ .Branch }}-{{ .Revision }}
       - restore_cache:
           key: maven-dependency-cache-{{ checksum "pom.xml" }}
       - run: echo "user=$BINTRAY_USERNAME" > .credentials
