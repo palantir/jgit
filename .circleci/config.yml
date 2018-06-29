@@ -24,10 +24,13 @@ jobs:
           sudo mv /tmp/apache-maven-3.5.4/ /usr/bin/maven
           rm -rf /tmp/apache-maven-3.5.4/ /tmp/apache-maven-3.5.4-bin.tar.gz
       - checkout
-        #      - restore_cache:
-        # keys:
-        #   - maven-dependency-cache-{{ checksum "pom.xml" }}
-        #   - maven-dependency-cache-
+      - restore_cache:
+          keys:
+           - maven-dependency-cache-{{ checksum "pom.xml" }}
+           - maven-dependency-cache-
+      # make sure pre-installed jgit artifacts are cleared
+      - run:
+          command: rm -rf "~/.m2/repository/org/eclipse/jgit/"
       - run:
           command: |
             export M2_HOME=/usr/bin/maven
@@ -35,6 +38,9 @@ jobs:
             export PATH=$M2:$PATH
             mvn clean package
             mvn -f org.eclipse.jgit.packaging/pom.xml clean package
+      # do not cache published artifacts
+      - run:
+          command: rm -rf "~/.m2/repository/org/eclipse/jgit/"
       - save_cache:
           key: maven-dependency-cache-{{ checksum "pom.xml" }}
           paths:
