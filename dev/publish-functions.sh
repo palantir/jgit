@@ -6,12 +6,10 @@ get_version() {
   git describe --tags --first-parent
 }
 
-set_version_and_package() {
+set_version() {
   version=$(get_version)
   mvn -Dtycho.mode=maven org.eclipse.tycho:tycho-versions-plugin:set-version -DnewVersion="$version"
   mvn -f org.eclipse.jgit.packaging/pom.xml -Dtycho.mode=maven org.eclipse.tycho:tycho-versions-plugin:set-version -DnewVersion="$version"
-  mvn -DskipTests package
-  mvn -f org.eclipse.jgit.packaging/pom.xml -DskipTests package
 }
 
 publish_artifacts() {
