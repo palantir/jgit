@@ -30,26 +30,26 @@ jobs:
            - maven-dependency-cache-
       # make sure pre-installed jgit artifacts are cleared
       - run:
-          command: rm -rf "~/.m2/repository/org/eclipse/jgit/"
+          command: rm -rf ~/.m2/repository/org/eclipse/jgit/
       - run:
           command: |
             export M2_HOME=/usr/bin/maven
             export M2="$M2_HOME/bin"
             export PATH=$M2:$PATH
-            mvn clean package
-            mvn -f org.eclipse.jgit.packaging/pom.xml clean package
+            mvn clean install
+            mvn -f org.eclipse.jgit.packaging/pom.xml clean install
       # do not cache published artifacts
       - run:
-          command: rm -rf "~/.m2/repository/org/eclipse/jgit/"
+          command: rm -rf ~/.m2/repository/org/eclipse/jgit/
       - save_cache:
           key: maven-dependency-cache-{{ checksum "pom.xml" }}
           paths:
-            - "~/.m2"
+            - ~/.m2
       - save_cache:
           key: v1-maven-build-with-version-{{ .Branch }}-{{ .Revision }}
           paths: .
       - store_test_results:
-          path: "org.eclipse.jgit.test/target/"
+          path: org.eclipse.jgit.test/target/
 
   deploy:
     machine: true
@@ -74,7 +74,7 @@ jobs:
             export PATH=$M2:$PATH
             dev/publish.sh
       - store_test_results:
-          path: "~/.m2/repository/org/eclipse/jgit/"
+          path: ~/.m2/repository/org/eclipse/jgit/
 
 workflows:
   version: 2
