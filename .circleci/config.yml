@@ -28,19 +28,12 @@ jobs:
           keys:
            - maven-dependency-cache-{{ checksum "pom.xml" }}
            - maven-dependency-cache-
-      # make sure pre-installed jgit artifacts are cleared
-      - run:
-          command: rm -rf ~/.m2/repository/org/eclipse/jgit/
       - run:
           command: |
             export M2_HOME=/usr/bin/maven
             export M2="$M2_HOME/bin"
             export PATH=$M2:$PATH
-            mvn clean install
-            mvn -f org.eclipse.jgit.packaging/pom.xml clean install
-      # do not cache published artifacts
-      - run:
-          command: rm -rf ~/.m2/repository/org/eclipse/jgit/
+            mvn -f pom.xml clean verify
       - save_cache:
           key: maven-dependency-cache-{{ checksum "pom.xml" }}
           paths:
@@ -63,10 +56,11 @@ jobs:
           curl -k --silent --show-error --location --fail --retry 3 --output /tmp/apache-maven-3.5.4-bin.tar.gz "http://supergsego.com/apache/maven/maven-3/3.5.4/binaries/apache-maven-3.5.4-bin.tar.gz"
           tar -xz -C /tmp -f /tmp/apache-maven-3.5.4-bin.tar.gz
           sudo mv /tmp/apache-maven-3.5.4/ /usr/bin/maven
-      - run: echo "user=$BINTRAY_USERNAME" > .credentials
-      - run: echo "password=$BINTRAY_PASSWORD" >> .credentials
-      - run: echo "realm=Bintray API Realm" >> .credentials
-      - run: echo "host=api.bintray.com" >> .credentials
+      - run: |
+          echo "user=$BINTRAY_USERNAME" > .credentials
+          echo "password=$BINTRAY_PASSWORD" >> .credentials
+          echo "realm=Bintray API Realm" >> .credentials
+          echo "host=api.bintray.com" >> .credentials
       - deploy:
           command: |
             export M2_HOME=/usr/bin/maven

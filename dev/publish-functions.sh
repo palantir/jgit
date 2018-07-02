@@ -19,5 +19,6 @@ publish_artifacts() {
   echo "<password>$BINTRAY_PASSWORD</password>" >> $tmp_settings
   echo "</server></servers></settings>" >> $tmp_settings
 
-  mvn -T 1C --settings $tmp_settings -DskipTests deploy
+  mvn -f pom.xml -s $tmp_settings -DskipTests install deploy:deploy
+  mvn -f org.eclipse.jgit.packaging/pom.xml -s $tmp_settings clean install deploy:deploy
 }
