@@ -85,20 +85,13 @@
     <module>org.eclipse.jgit.pgm.source.feature</module>
     <module>org.eclipse.jgit.junit.feature</module>
     <module>org.eclipse.jgit.repository</module>
-  </modules>
+</modules>
 
   <distributionManagement>
     <repository>
-      <id>repo.eclipse.org</id>
-      <name>JGit Maven Repository - Releases</name>
-      <url>https://repo.eclipse.org/content/repositories/jgit-releases/</url>
+      <id>bintray-palantir-release</id>
+      <url>https://api.bintray.com/maven/palantir/releases/jgit/</url>
     </repository>
-    <snapshotRepository>
-      <id>repo.eclipse.org</id>
-      <name>JGit Maven Repository - Snapshots</name>
-      <url>https://repo.eclipse.org/content/repositories/jgit-snapshots/</url>
-      <uniqueVersion>true</uniqueVersion>
-    </snapshotRepository>
   </distributionManagement>
 
   <dependencies>
