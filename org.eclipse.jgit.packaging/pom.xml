@@ -85,7 +85,7 @@
     <module>org.eclipse.jgit.pgm.source.feature</module>
     <module>org.eclipse.jgit.junit.feature</module>
     <module>org.eclipse.jgit.repository</module>
-</modules>
+  </modules>
 
   <distributionManagement>
     <repository>
