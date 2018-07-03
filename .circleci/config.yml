@@ -26,8 +26,7 @@ jobs:
       - checkout
       - restore_cache:
           keys:
-           - maven-dependency-cache-{{ checksum "pom.xml" }}
-           - maven-dependency-cache-
+           - v1-maven-dependency-cache-{{ checksum "pom.xml" }}
       - run:
           command: |
             export M2_HOME=/usr/bin/maven
@@ -35,7 +34,7 @@ jobs:
             export PATH=$M2:$PATH
             mvn -f pom.xml clean verify
       - save_cache:
-          key: maven-dependency-cache-{{ checksum "pom.xml" }}
+          key: v1-maven-dependency-cache-{{ checksum "pom.xml" }}
           paths:
             - ~/.m2
       - save_cache:
@@ -50,7 +49,7 @@ jobs:
       - restore_cache:
           key: v1-maven-build-with-version-{{ .Branch }}-{{ .Revision }}
       - restore_cache:
-          key: maven-dependency-cache-{{ checksum "pom.xml" }}
+          key: v1-maven-dependency-cache-{{ checksum "pom.xml" }}
       - run: |
           sudo rm -rf /usr/bin/maven
           curl -k --silent --show-error --location --fail --retry 3 --output /tmp/apache-maven-3.5.4-bin.tar.gz "http://supergsego.com/apache/maven/maven-3/3.5.4/binaries/apache-maven-3.5.4-bin.tar.gz"
