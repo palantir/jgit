@@ -721,7 +721,7 @@
   <distributionManagement>
     <repository>
       <id>bintray-palantir-release</id>
-      <url>https://api.bintray.com/maven/palantir/releases/jgit/</url>
+      <url>https://api.bintray.com/maven/palantir/releases/jgit/;publish=1</url>
     </repository>
   </distributionManagement>
 
