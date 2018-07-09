@@ -8,8 +8,8 @@ get_version() {
 
 set_version() {
   version=$(get_version)
-  mvn -f pom.xml -Dtycho.mode=maven tycho-version:set-version -DnewVersion="$version"
-  mvn -f org.eclipse.jgit.packaging/pom.xml -Dtycho.mode=maven tycho-version:set-version -DnewVersion="$version"
+  mvn -f pom.xml -Dtycho.mode=maven org.eclipse.tycho:tycho-versions-plugin:set-version -DnewVersion="$version"
+  mvn -f org.eclipse.jgit.packaging/pom.xml -Dtycho.mode=maven org.eclipse.tycho:tycho-versions-plugin:set-version -DnewVersion="$version"
 }
 
 publish_artifacts() {
