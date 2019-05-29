@@ -50,17 +50,21 @@ import static org.eclipse.jgit.internal.storage.pack.PackExt.INDEX;
 
 import java.io.EOFException;
 import java.io.File;
+import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.io.InterruptedIOException;
 import java.io.RandomAccessFile;
 import java.nio.MappedByteBuffer;
 import java.nio.channels.FileChannel.MapMode;
+import java.nio.file.AccessDeniedException;
+import java.nio.file.NoSuchFileException;
 import java.text.MessageFormat;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.Comparator;
 import java.util.Iterator;
 import java.util.Set;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.zip.CRC32;
 import java.util.zip.DataFormatException;
 import java.util.zip.Inflater;
@@ -68,9 +72,13 @@ import java.util.zip.Inflater;
 import org.eclipse.jgit.errors.CorruptObjectException;
 import org.eclipse.jgit.errors.LargeObjectException;
 import org.eclipse.jgit.errors.MissingObjectException;
+import org.eclipse.jgit.errors.NoPackSignatureException;
 import org.eclipse.jgit.errors.PackInvalidException;
 import org.eclipse.jgit.errors.PackMismatchException;
 import org.eclipse.jgit.errors.StoredObjectRepresentationNotAvailableException;
+import org.eclipse.jgit.errors.UnpackException;
+import org.eclipse.jgit.errors.UnsupportedPackIndexVersionException;
+import org.eclipse.jgit.errors.UnsupportedPackVersionException;
 import org.eclipse.jgit.internal.JGitText;
 import org.eclipse.jgit.internal.storage.pack.BinaryDelta;
 import org.eclipse.jgit.internal.storage.pack.ObjectToPack;
@@ -121,9 +129,15 @@ public class PackFile implements Iterable<PackIndex.MutableEntry> {
 
 	int packLastModified;
 
+	private FileSnapshot fileSnapshot;
+
 	private volatile boolean invalid;
 
+	private volatile Exception invalidatingCause;
+
 	private boolean invalidBitmap;
+
+	private AtomicInteger transientErrorCount = new AtomicInteger();
 
 	private byte[] packChecksum;
 
@@ -152,7 +166,8 @@ public class PackFile implements Iterable<PackIndex.MutableEntry> {
 	 */
 	public PackFile(final File packFile, int extensions) {
 		this.packFile = packFile;
-		this.packLastModified = (int) (packFile.lastModified() >> 10);
+		this.fileSnapshot = FileSnapshot.save(packFile);
+		this.packLastModified = (int) (fileSnapshot.lastModified() >> 10);
 		this.extensions = extensions;
 
 		// Multiply by 31 here so we can more directly combine with another
@@ -164,8 +179,9 @@ public class PackFile implements Iterable<PackIndex.MutableEntry> {
 
 	private synchronized PackIndex idx() throws IOException {
 		if (loadedIdx == null) {
-			if (invalid)
-				throw new PackInvalidException(packFile);
+			if (invalid) {
+				throw new PackInvalidException(packFile, invalidatingCause);
+			}
 
 			try {
 				final PackIndex idx = PackIndex.open(extFile(INDEX));
@@ -183,6 +199,7 @@ public class PackFile implements Iterable<PackIndex.MutableEntry> {
 				throw e;
 			} catch (IOException e) {
 				invalid = true;
+				invalidatingCause = e;
 				throw e;
 			}
 		}
@@ -323,6 +340,16 @@ public class PackFile implements Iterable<PackIndex.MutableEntry> {
 	 */
 	ObjectId findObjectForOffset(final long offset) throws IOException {
 		return getReverseIdx().findObject(offset);
+	}
+
+	/**
+	 * Return the @{@link FileSnapshot} associated to the underlying packfile
+	 * that has been used when the object was created.
+	 *
+	 * @return the packfile @{@link FileSnapshot} that the object is loaded from.
+	 */
+	FileSnapshot getFileSnapshot() {
+		return fileSnapshot;
 	}
 
 	private final byte[] decompress(final long position, final int sz,
@@ -568,6 +595,14 @@ public class PackFile implements Iterable<PackIndex.MutableEntry> {
 		invalid = true;
 	}
 
+	int incrementTransientErrorCount() {
+		return transientErrorCount.incrementAndGet();
+	}
+
+	void resetTransientErrorCount() {
+		transientErrorCount.set(0);
+	}
+
 	private void readFully(final long position, final byte[] dstbuf,
 			int dstoff, final int cnt, final WindowCursor curs)
 			throws IOException {
@@ -612,9 +647,10 @@ public class PackFile implements Iterable<PackIndex.MutableEntry> {
 	}
 
 	private void doOpen() throws IOException {
+		if (invalid) {
+			throw new PackInvalidException(packFile, invalidatingCause);
+		}
 		try {
-			if (invalid)
-				throw new PackInvalidException(packFile);
 			synchronized (readLock) {
 				fd = new RandomAccessFile(packFile, "r"); //$NON-NLS-1$
 				length = fd.length();
@@ -622,24 +658,35 @@ public class PackFile implements Iterable<PackIndex.MutableEntry> {
 			}
 		} catch (InterruptedIOException e) {
 			// don't invalidate the pack, we are interrupted from another thread
-			openFail(false);
+			openFail(false, e);
 			throw e;
-		} catch (IOException ioe) {
-			openFail(true);
-			throw ioe;
-		} catch (RuntimeException re) {
-			openFail(true);
-			throw re;
-		} catch (Error re) {
-			openFail(true);
-			throw re;
+		} catch (FileNotFoundException fn) {
+			// don't invalidate the pack if opening an existing file failed
+			// since it may be related to a temporary lack of resources (e.g.
+			// max open files)
+			openFail(!packFile.exists(), fn);
+			throw fn;
+		} catch (EOFException | AccessDeniedException | NoSuchFileException
+				| CorruptObjectException | NoPackSignatureException
+				| PackMismatchException | UnpackException
+				| UnsupportedPackIndexVersionException
+				| UnsupportedPackVersionException pe) {
+			// exceptions signaling permanent problems with a pack
+			openFail(true, pe);
+			throw pe;
+		} catch (IOException | RuntimeException ge) {
+			// generic exceptions could be transient so we should not mark the
+			// pack invalid to avoid false MissingObjectExceptions
+			openFail(false, ge);
+			throw ge;
 		}
 	}
 
-	private void openFail(boolean invalidate) {
+	private void openFail(boolean invalidate, Exception cause) {
 		activeWindows = 0;
 		activeCopyRawData = 0;
 		invalid = invalidate;
+		invalidatingCause = cause;
 		doClose();
 	}
 
@@ -660,6 +707,14 @@ public class PackFile implements Iterable<PackIndex.MutableEntry> {
 
 	ByteArrayWindow read(final long pos, int size) throws IOException {
 		synchronized (readLock) {
+			if (invalid || fd == null) {
+				// Due to concurrency between a read and another packfile invalidation thread
+				// one thread could come up to this point and then fail with NPE.
+				// Detect the situation and throw a proper exception so that can be properly
+				// managed by the main packfile search loop and the Git client won't receive
+				// any failures.
+				throw new PackInvalidException(packFile, invalidatingCause);
+			}
 			if (length < pos + size)
 				size = (int) (length - pos);
 			final byte[] buf = new byte[size];
@@ -699,28 +754,31 @@ public class PackFile implements Iterable<PackIndex.MutableEntry> {
 
 		fd.seek(0);
 		fd.readFully(buf, 0, 12);
-		if (RawParseUtils.match(buf, 0, Constants.PACK_SIGNATURE) != 4)
-			throw new IOException(JGitText.get().notAPACKFile);
+		if (RawParseUtils.match(buf, 0, Constants.PACK_SIGNATURE) != 4) {
+			throw new NoPackSignatureException(JGitText.get().notAPACKFile);
+		}
 		final long vers = NB.decodeUInt32(buf, 4);
 		final long packCnt = NB.decodeUInt32(buf, 8);
-		if (vers != 2 && vers != 3)
-			throw new IOException(MessageFormat.format(
-					JGitText.get().unsupportedPackVersion, Long.valueOf(vers)));
+		if (vers != 2 && vers != 3) {
+			throw new UnsupportedPackVersionException(vers);
+		}
 
-		if (packCnt != idx.getObjectCount())
+		if (packCnt != idx.getObjectCount()) {
 			throw new PackMismatchException(MessageFormat.format(
 					JGitText.get().packObjectCountMismatch,
 					Long.valueOf(packCnt), Long.valueOf(idx.getObjectCount()),
 					getPackFile()));
+		}
 
 		fd.seek(length - 20);
 		fd.readFully(buf, 0, 20);
-		if (!Arrays.equals(buf, packChecksum))
+		if (!Arrays.equals(buf, packChecksum)) {
 			throw new PackMismatchException(MessageFormat.format(
 					JGitText.get().packObjectCountMismatch
 					, ObjectId.fromRaw(buf).name()
 					, ObjectId.fromRaw(idx.packChecksum).name()
 					, getPackFile()));
+		}
 	}
 
 	ObjectLoader load(final WindowCursor curs, long pos)
@@ -1074,8 +1132,17 @@ public class PackFile implements Iterable<PackIndex.MutableEntry> {
 		if (invalid || invalidBitmap)
 			return null;
 		if (bitmapIdx == null && hasExt(BITMAP_INDEX)) {
-			final PackBitmapIndex idx = PackBitmapIndex.open(
-					extFile(BITMAP_INDEX), idx(), getReverseIdx());
+			final PackBitmapIndex idx;
+			try {
+				idx = PackBitmapIndex.open(extFile(BITMAP_INDEX), idx(),
+						getReverseIdx());
+			} catch (FileNotFoundException e) {
+				// Once upon a time this bitmap file existed. Now it
+				// has been removed. Most likely an external gc  has
+				// removed this packfile and the bitmap
+				 invalidBitmap = true;
+				 return null;
+			}
 
 			// At this point, idx() will have set packChecksum.
 			if (Arrays.equals(packChecksum, idx.packChecksum))

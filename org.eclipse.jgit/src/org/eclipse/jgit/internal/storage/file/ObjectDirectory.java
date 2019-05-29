@@ -127,8 +127,6 @@ public class ObjectDirectory extends FileObjectDatabase {
 
 	private final File alternatesFile;
 
-	private final AtomicReference<PackList> packList;
-
 	private final FS fs;
 
 	private final AtomicReference<AlternateHandle[]> alternates;
@@ -140,6 +138,8 @@ public class ObjectDirectory extends FileObjectDatabase {
 	private FileSnapshot shallowFileSnapshot = FileSnapshot.DIRTY;
 
 	private Set<ObjectId> shallowCommitsIds;
+
+	final AtomicReference<PackList> packList;
 
 	/**
 	 * Initialize a reference to an on-disk object directory.
@@ -337,6 +337,7 @@ public class ObjectDirectory extends FileObjectDatabase {
 			for (PackFile p : pList.packs) {
 				try {
 					p.resolve(matches, id, RESOLVE_ABBREV_LIMIT);
+					p.resetTransientErrorCount();
 				} catch (IOException e) {
 					handlePackError(e, p);
 				}
@@ -418,6 +419,7 @@ public class ObjectDirectory extends FileObjectDatabase {
 				for (PackFile p : pList.packs) {
 					try {
 						ObjectLoader ldr = p.get(curs, objectId);
+						p.resetTransientErrorCount();
 						if (ldr != null)
 							return ldr;
 					} catch (PackMismatchException e) {
@@ -496,6 +498,7 @@ public class ObjectDirectory extends FileObjectDatabase {
 				for (PackFile p : pList.packs) {
 					try {
 						long len = p.getObjectSize(curs, id);
+						p.resetTransientErrorCount();
 						if (0 <= len)
 							return len;
 					} catch (PackMismatchException e) {
@@ -535,6 +538,7 @@ public class ObjectDirectory extends FileObjectDatabase {
 			for (final PackFile p : pList.packs) {
 				try {
 					LocalObjectRepresentation rep = p.representation(curs, otp);
+					p.resetTransientErrorCount();
 					if (rep != null)
 						packer.select(otp, rep);
 				} catch (PackMismatchException e) {
@@ -555,6 +559,8 @@ public class ObjectDirectory extends FileObjectDatabase {
 
 	private void handlePackError(IOException e, PackFile p) {
 		String warnTmpl = null;
+		int transientErrorCount = 0;
+		String errTmpl = JGitText.get().exceptionWhileReadingPack;
 		if ((e instanceof CorruptObjectException)
 				|| (e instanceof PackInvalidException)) {
 			warnTmpl = JGitText.get().corruptPack;
@@ -562,30 +568,39 @@ public class ObjectDirectory extends FileObjectDatabase {
 			removePack(p);
 		} else if (e instanceof FileNotFoundException) {
 			if (p.getPackFile().exists()) {
-				warnTmpl = JGitText.get().packInaccessible;
+				errTmpl = JGitText.get().packInaccessible;
+				transientErrorCount = p.incrementTransientErrorCount();
 			} else {
 				warnTmpl = JGitText.get().packWasDeleted;
+				removePack(p);
 			}
-			removePack(p);
 		} else if (FileUtils.isStaleFileHandle(e)) {
 			warnTmpl = JGitText.get().packHandleIsStale;
 			removePack(p);
+		} else {
+			transientErrorCount = p.incrementTransientErrorCount();
 		}
 		if (warnTmpl != null) {
-			if (LOG.isDebugEnabled()) {
-				LOG.debug(MessageFormat.format(warnTmpl,
-						p.getPackFile().getAbsolutePath()), e);
-			} else {
-				LOG.warn(MessageFormat.format(warnTmpl,
-						p.getPackFile().getAbsolutePath()));
-			}
+			LOG.warn(MessageFormat.format(warnTmpl,
+					p.getPackFile().getAbsolutePath()), e);
 		} else {
-			// Don't remove the pack from the list, as the error may be
-			// transient.
-			LOG.error(MessageFormat.format(
-					JGitText.get().exceptionWhileReadingPack, p.getPackFile()
-							.getAbsolutePath()), e);
+			if (doLogExponentialBackoff(transientErrorCount)) {
+				// Don't remove the pack from the list, as the error may be
+				// transient.
+				LOG.error(MessageFormat.format(errTmpl,
+						p.getPackFile().getAbsolutePath()),
+						Integer.valueOf(transientErrorCount), e);
+			}
 		}
+	}
+
+	/**
+	 * @param n
+	 *            count of consecutive failures
+	 * @return @{code true} if i is a power of 2
+	 */
+	private boolean doLogExponentialBackoff(int n) {
+		return (n & (n - 1)) == 0;
 	}
 
 	@Override
@@ -654,7 +669,7 @@ public class ObjectDirectory extends FileObjectDatabase {
 		return InsertLooseObjectResult.FAILURE;
 	}
 
-	private boolean searchPacksAgain(PackList old) {
+	boolean searchPacksAgain(PackList old) {
 		// Whether to trust the pack folder's modification time. If set
 		// to false we will always scan the .git/objects/pack folder to
 		// check for new pack files. If set to true (default) we use the
@@ -800,13 +815,14 @@ public class ObjectDirectory extends FileObjectDatabase {
 			}
 
 			final String packName = base + PACK.getExtension();
+			final File packFile = new File(packDirectory, packName);
 			final PackFile oldPack = forReuse.remove(packName);
-			if (oldPack != null) {
+			if (oldPack != null
+					&& !oldPack.getFileSnapshot().isModified(packFile)) {
 				list.add(oldPack);
 				continue;
 			}
 
-			final File packFile = new File(packDirectory, packName);
 			list.add(new PackFile(packFile, extensions));
 			foundNew = true;
 		}
@@ -940,7 +956,7 @@ public class ObjectDirectory extends FileObjectDatabase {
 		return new File(new File(getDirectory(), d), f);
 	}
 
-	private static final class PackList {
+	static final class PackList {
 		/** State just before reading the pack directory. */
 		final FileSnapshot snapshot;
 
