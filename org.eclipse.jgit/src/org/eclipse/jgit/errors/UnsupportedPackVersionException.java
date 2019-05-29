@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2009, Google Inc.
+ * Copyright (C) 2017, Matthias Sohn <matthias.sohn@sap.com>
  * and other copyright owners as documented in the project's IP log.
  *
  * This program and the accompanying materials are made available
@@ -43,63 +43,27 @@
 
 package org.eclipse.jgit.errors;
 
-import java.io.File;
 import java.io.IOException;
 import java.text.MessageFormat;
 
 import org.eclipse.jgit.internal.JGitText;
 
-/** Thrown when a PackFile previously failed and is known to be unusable */
-public class PackInvalidException extends IOException {
+/**
+ * Thrown when a PackFile uses a pack version not supported by JGit.
+ *
+ * @since 4.5
+ */
+public class UnsupportedPackVersionException extends IOException {
 	private static final long serialVersionUID = 1L;
 
 	/**
-	 * Construct a pack invalid error.
+	 * Construct an exception.
 	 *
-	 * @param path
-	 *            path of the invalid pack file.
-	 * @deprecated Use {@link #PackInvalidException(File, Throwable)}.
+	 * @param version
+	 *            pack version
 	 */
-	@Deprecated
-	public PackInvalidException(final File path) {
-		this(path, null);
-	}
-
-	/**
-	 * Construct a pack invalid error with cause.
-	 *
-	 * @param path
-	 *            path of the invalid pack file.
-	 * @param cause
-	 *            cause of the pack file becoming invalid.
-	 * @since 4.5.7
-	 */
-	public PackInvalidException(final File path, Throwable cause) {
-		this(path.getAbsolutePath(), cause);
-	}
-
-	/**
-	 * Construct a pack invalid error.
-	 *
-	 * @param path
-	 *            path of the invalid pack file.
-	 * @deprecated Use {@link #PackInvalidException(String, Throwable)}.
-	 */
-	@Deprecated
-	public PackInvalidException(final String path) {
-		this(path, null);
-	}
-
-	/**
-	 * Construct a pack invalid error with cause.
-	 *
-	 * @param path
-	 *            path of the invalid pack file.
-	 * @param cause
-	 *            cause of the pack file becoming invalid.
-	 * @since 4.5.7
-	 */
-	public PackInvalidException(final String path, Throwable cause) {
-		super(MessageFormat.format(JGitText.get().packFileInvalid, path), cause);
+	public UnsupportedPackVersionException(final long version) {
+		super(MessageFormat.format(JGitText.get().unsupportedPackVersion,
+				Long.valueOf(version)));
 	}
 }
